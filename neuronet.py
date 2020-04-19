@@ -3,17 +3,38 @@ import math
 
 
 def get_tast(num):
-    tasks = [
-        ([0.2, 0.8], 0.1),
-        ([0.8, 0.8], 0.9),
-        ([0.2, 0.2], 0.1),
-        ([0.8, 0.2], 0.1),
-    ]
-    return tasks[random.randint(0, 3)]
+    # tasks = [
+    #     ([0.2, 0.8], [1]),
+    #     ([0.8, 0.8], [1]),
+    #     ([0.2, 0.2], [0]),
+    #     ([0.8, 0.2], [1]),
+    # ]
+    # return tasks[random.randint(0, 3)]
+    if random.random() < 0.25:
+        return ([
+                ((random.random()-0.000001)/2),
+                ((random.random()-0.000001)/2)
+                 ], [0])
+    if random.random() < 0.50:
+        return ([
+                ((random.random()+1)/2),
+                ((random.random()-0.000001)/2)
+                 ], [1])
+    if random.random() < 0.75:
+        return ([
+                ((random.random()-0.000001)/2),
+                ((random.random()+1)/2)
+                 ], [1])
+    if random.random() <= 1:
+        return ([
+                ((random.random()+1)/2),
+                ((random.random()+1)/2)
+                 ], [1])
 
 
 def fix_out_error(idl, last_layer):
-    last_layer[0][1] = idl - last_layer[0][0]
+    for i in range(len(last_layer)-1):
+        last_layer[i][1] = idl[i] - last_layer[i][0]
 
 
 def forwards(lay1, links ,lay2):
@@ -36,98 +57,55 @@ def backwards(lay1, links, lay2, k):
             links[i][j] = links[i][j] + k*lay2[j][1]*lay2[j][0]*(1-lay2[j][0])*lay1[i][0]
 
 
-if __name__ == "__main__":
-    layer1 = [
-        [0, 0],
-        [0, 0],
-        [1, 0],
-    ]
-    # значение нейрона и ошибка
-    layer2 = [
-        [0, 0],
-        [0, 0],
-        [0, 0],
-        [1, 0],
-    ]
-    layer3 = [
-        [0, 0],
-        [1, 0]
-    ]
-    links12 = [
-        [random.random(), random.random(), random.random(), random.random()],
-        [random.random(), random.random(), random.random(), random.random()],
-        [random.random(), random.random(), random.random(), random.random()],
-    ]
-    links23 = [
-        [random.random()],
-        [random.random()],
-        [random.random()],
-        [random.random()],
-    ]
-    task = None
-    is_ok = False
+def run_neuronet(lay_map, k, times):
+    layers = []
+    links = []
+    layers.append([[0, 0] for j in range(lay_map[0])]+[[1, 0]])
+    for i in range(len(lay_map)-1):
+        layers.append([[0, 0] for j in range(lay_map[i+1])]+[[1, 0]])
+        links.append([[random.random() for b in range(lay_map[i+1]+1)] for a in range(lay_map[i]+1)])
+    print(layers)
+    print(links)
     counter = 0
-    while(is_ok==False):
-        for i in range(100):
-            val_in, val_out = get_tast(i)
+    for i in range(times):
+        val_in, val_out = get_tast(i)
 
-            layer1[0][0] = val_in[0]
-            layer1[1][0] = val_in[1]
+        # заполнение первого слоя входными данными
+        for num, val in enumerate(val_in):
+            layers[0][num][0] = val
 
-            forwards(layer1, links12, layer2)
-            forwards(layer2, links23, layer3)
+        for num in range(len(layers)-1):
+            forwards(layers[num], links[num], layers[num+1])
 
-            fix_out_error(val_out, layer3)
+        fix_out_error(val_out, layers[-1])
 
-            find_error(layer2, links23, layer3)
-            find_error(layer1, links12, layer2)
+        for num in reversed(range(len(layers)-1)):
+            find_error(layers[num], links[num], layers[num+1])
 
-            backwards(layer2, links23, layer3, 1)
-            backwards(layer1, links12, layer2, 1)
-            counter+=1
-            #print(layer1)
-            #print(layer2)
-            print(str(layer3[0][0])+" "+str(layer3[0][1]))
-        print("--------------------------------------------------------------")
+        for num in reversed(range(len(layers)-1)):
+            backwards(layers[num], links[num], layers[num+1], k)
 
-        layer1[0][0] = 0.2
-        layer1[1][0] = 0.2
-        forwards(layer1, links12, layer2)
-        forwards(layer2, links23, layer3)
-        if layer3[0][0] <= 0.2:
-            is_ok = True
-        else:
-            is_ok = False
-        print(layer3)
-        layer1[0][0] = 0.2
-        layer1[1][0] = 0.8
-        forwards(layer1, links12, layer2)
-        forwards(layer2, links23, layer3)
-        if layer3[0][0] <= 0.2 and is_ok == True:
-            is_ok = True
-        else:
-            is_ok = False
-        print(layer3)
-        layer1[0][0] = 0.8
-        layer1[1][0] = 0.2
-        forwards(layer1, links12, layer2)
-        forwards(layer2, links23, layer3)
-        if layer3[0][0] <= 0.2 and is_ok == True:
-            is_ok = True
-        else:
-            is_ok = False
-        print(layer3)
-        layer1[0][0] = 0.8
-        layer1[1][0] = 0.8
-        forwards(layer1, links12, layer2)
-        forwards(layer2, links23, layer3)
-        if layer3[0][0] >= 0.8 and is_ok == True:
-            is_ok = True
-        else:
-            is_ok = False
-        print(layer3)
-    print(counter)
+        counter+=1
+        print(str(layers[-1][0][0])+" "+str(layers[-1][0][1]))
+    for layer in layers:
+        print(layer)
+    print("Layers cofig")
+    print(lay_map)
+    print("Links config")
+    for link in links:
+        print(link)
+    while(True):
+        a1 = input("Число 1: ")
+        a2 = input("Число 2: ")
+        layers[0][0][0] = float(a1)
+        layers[0][1][0] = float(a2)
+        for num in range(len(layers) - 1):
+            forwards(layers[num], links[num], layers[num + 1])
+        print(str(layers[-1][0][0])+" "+str(layers[-1][0][1]))
 
+
+if __name__ == "__main__":
+    run_neuronet(lay_map=[2, 3, 1], k=0.2, times=100)
 
 
 
